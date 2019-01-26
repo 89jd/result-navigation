@@ -110,7 +110,7 @@ private open class BroadcastReceiverActivityLifecycleCallbacks(internal val broa
 }
 
 sealed class ChoiceResult<T>(open val data: T?) {
-    data class OK<T>(override val data: T?): ChoiceResult<T>(data)
+    data class OK<T>(override val data: T): ChoiceResult<T>(data)
     data class Cancelled<T>(override val data: T? = null): ChoiceResult<T>(null)
 }
 
