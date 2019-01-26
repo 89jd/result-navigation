@@ -1,0 +1,16 @@
+apply plugin: "kotlin-platform-native"
+apply plugin: 'maven'
+
+group='com.github.JackED42'
+
+dependencies {
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-native:1.0.1"
+    expectedBy project(':common')
+}
+
+components.main {
+    outputKinds = [FRAMEWORK]
+    targets = ['ios_x64', 'ios_arm64']
+    extraOpts '-Xdisable=devirtualization', '-linker-options', '-iphoneos_version_min 9.0.0'
+
+}
