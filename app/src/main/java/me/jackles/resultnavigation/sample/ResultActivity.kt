@@ -35,7 +35,7 @@ class ResultActivity: AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setContentView(TextView(this).apply {
-            text = "Hello\nworld"
+            text = "Activity"
             setOnClickListener {
                 endWithResult(this@ResultActivity,
                     Test("HI")
