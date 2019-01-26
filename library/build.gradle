@@ -2,7 +2,10 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-platform-android'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
-apply plugin: 'maven'
+
+apply plugin: 'com.github.dcendents.android-maven'
+
+group='com.github.JackED42.android'
 
 android {
     compileSdkVersion 28
@@ -35,3 +38,5 @@ dependencies {
 
     expectedBy project(':common')
 }
+
+

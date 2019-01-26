@@ -1,0 +1,23 @@
+buildscript {
+    ext.kotlin_version = '1.3.11'
+    repositories {
+        google()
+        jcenter()
+        maven {
+            url "https://dl.bintray.com/jetbrains/kotlin-native-dependencies"
+        }
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-native-gradle-plugin:1.3.0-rc-146"
+        classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
+    }
+}
+apply plugin: 'kotlin-platform-common'
+apply plugin: 'com.github.dcendents.android-maven'
+group='com.github.JackED42.common'
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlin_version"
+}
+
