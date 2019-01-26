@@ -13,33 +13,32 @@ import android.support.v4.app.FragmentActivity
 import android.support.v4.app.FragmentManager
 import android.support.v4.app.FragmentTransaction
 import kotlinx.coroutines.CancellableContinuation
+import me.jackles.resultnavigation.common.ChoiceResult
 import kotlin.coroutines.resume
 
 private const val PREFIX = "for.result.execute"
 private const val HAS_RESULT ="$PREFIX.has.result"
 private const val RESULT ="$PREFIX.result"
-private const val DELAYED_RESULT ="$PREFIX.delayed.result"
 private const val CALLER_KEY ="$PREFIX.caller"
 private const val ACTION_KEY ="$PREFIX.action.key"
-private const val SAVE_INSTANCE_KEY ="$PREFIX.action.save.instance"
 private var uniqueValue = 0L
 
-fun <T: Parcelable>launchForResult(cancellableContinuation: CancellableContinuation<ChoiceResult<T>>,
+fun <T: Parcelable>launchForResult(cancellableContinuation: CancellableContinuation<ChoiceResult>,
                                    activity: FragmentActivity,
                                    fragment: Fragment,
                                    fragmentManager: FragmentManager,
                                    fragmentTransaction: FragmentTransaction) {
-    LaunchForResult().execute(cancellableContinuation,
+    LaunchForResult().execute<T>(cancellableContinuation,
         activity,
         fragment,
         fragmentManager,
         fragmentTransaction)
 }
 
-fun <T: Parcelable>launchForResult(cancellableContinuation: CancellableContinuation<ChoiceResult<T>>,
+fun <T: Parcelable>launchForResult(cancellableContinuation: CancellableContinuation<ChoiceResult>,
                                    activity: FragmentActivity,
                                    intent: Intent) {
-    LaunchForResult().execute(cancellableContinuation,
+    LaunchForResult().execute<T>(cancellableContinuation,
         activity,
         intent)
 }
@@ -109,11 +108,6 @@ private open class BroadcastReceiverActivityLifecycleCallbacks(internal val broa
     }
 }
 
-sealed class ChoiceResult<T> {
-    data class OK<T>(val data: T): ChoiceResult<T>()
-    class Cancelled<T>: ChoiceResult<T>()
-}
-
 class LaunchForResult {
     private fun <T : Parcelable> broadcastReceiverFactory(
         onResultRetrieved: (T) -> Unit
@@ -133,7 +127,7 @@ class LaunchForResult {
 
     @Synchronized
     fun <T: Parcelable> execute(
-        continuation: CancellableContinuation<ChoiceResult<T>>,
+        continuation: CancellableContinuation<ChoiceResult>,
         callingActivity: FragmentActivity,
         intent: Intent
     ) {
@@ -161,7 +155,7 @@ class LaunchForResult {
                     callerId = this.callerId,
                     onDestroyedCallback = {
                         activity.application.unregisterActivityLifecycleCallbacks(it)
-                        continuation.resume(ChoiceResult.Cancelled())
+                        continuation.resume(ChoiceResult.Cancelled)
                     }){
                 }
                 if (bundle?.containsKey(CALLER_KEY) == true) {
@@ -193,7 +187,7 @@ class LaunchForResult {
 
     @Synchronized
     fun <T: Parcelable> execute(
-        continuation: CancellableContinuation<ChoiceResult<T>>,
+        continuation: CancellableContinuation<ChoiceResult>,
         callingActivity: FragmentActivity,
         resultFragment: Fragment,
         fragmentManager: FragmentManager,
@@ -239,9 +233,9 @@ class LaunchForResult {
                 if (!hasOnSaveInstanceStateBeenCalled) {
                     application.unregisterActivityLifecycleCallbacks(activityCallbacks)
                     if (f.arguments?.getBoolean(HAS_RESULT) == true) {
-                        continuation.resume(ChoiceResult.OK(f.arguments!!.getParcelable(RESULT)))
+                        continuation.resume(ChoiceResult.OK(f.arguments!!.getParcelable<T>(RESULT)))
                     } else {
-                        continuation.resume(ChoiceResult.Cancelled())
+                        continuation.resume(ChoiceResult.Cancelled)
                     }
                 }
             }

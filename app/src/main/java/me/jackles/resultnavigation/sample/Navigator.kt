@@ -8,7 +8,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.support.v4.app.FragmentActivity
 import kotlinx.coroutines.suspendCancellableCoroutine
-import me.jackles.resultnavigation.ChoiceResult
+import me.jackles.resultnavigation.common.ChoiceResult
 import me.jackles.resultnavigation.launchForResult
 
 class Navigator(val application: Application) {
@@ -38,9 +38,9 @@ class Navigator(val application: Application) {
         })
     }
 
-    suspend fun launchGetStringViaActivity() = suspendCancellableCoroutine<ChoiceResult<ResultActivity.Test>> {
+    suspend fun launchGetStringViaActivity() = suspendCancellableCoroutine<ChoiceResult> {
         activity?.let { activity ->
-            launchForResult(it,
+            launchForResult<ResultActivity.Test>(it,
                 activity,
                 Intent(this.activity, ResultActivity::class.java)
             )
@@ -48,10 +48,10 @@ class Navigator(val application: Application) {
     }
 
     @SuppressLint("CommitTransaction")
-    suspend fun launchGetStringViaFragment() = suspendCancellableCoroutine<ChoiceResult<ResultActivity.Test>> {
+    suspend fun launchGetStringViaFragment() = suspendCancellableCoroutine<ChoiceResult> {
         val frag = ResultFragment()
         activity?.let { activity ->
-            launchForResult(it,
+            launchForResult<ResultActivity.Test>(it,
                 activity,
                 frag,
                 activity.supportFragmentManager,
