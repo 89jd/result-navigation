@@ -12,65 +12,35 @@ import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentActivity
 import android.support.v4.app.FragmentManager
 import android.support.v4.app.FragmentTransaction
-import kotlinx.coroutines.CancellableContinuation
-import me.jackles.resultnavigation.common.ChoiceResult
 import kotlin.coroutines.resume
 
 private const val PREFIX = "for.result.execute"
-private const val HAS_RESULT ="$PREFIX.has.result"
-private const val RESULT ="$PREFIX.result"
+
+const val HAS_RESULT ="$PREFIX.has.result"
+const val RESULT ="$PREFIX.result"
+const val ACTION_KEY ="$PREFIX.action.key"
+
 private const val CALLER_KEY ="$PREFIX.caller"
-private const val ACTION_KEY ="$PREFIX.action.key"
 private var uniqueValue = 0L
 
-fun <T: Parcelable>launchForResult(cancellableContinuation: CancellableContinuation<ChoiceResult>,
-                                   activity: FragmentActivity,
-                                   fragment: Fragment,
-                                   fragmentManager: FragmentManager,
-                                   fragmentTransaction: FragmentTransaction) {
-    LaunchForResult().execute<T>(cancellableContinuation,
-        activity,
-        fragment,
-        fragmentManager,
-        fragmentTransaction)
-}
+data class ActivityParams(
+    internal val callingActivity: FragmentActivity,
+    internal val intent: Intent
+)
 
-fun <T: Parcelable>launchForResult(cancellableContinuation: CancellableContinuation<ChoiceResult>,
-                                   activity: FragmentActivity,
-                                   intent: Intent) {
-    LaunchForResult().execute<T>(cancellableContinuation,
-        activity,
-        intent)
-}
+data class FragmentParams(
+    internal val callingActivity: FragmentActivity,
+    internal val fragment: Fragment,
+    internal val fragmentManager: FragmentManager,
+    internal val fragmentTransaction: FragmentTransaction
+)
 
-fun endWithResult(activity: FragmentActivity,
-                  result: Parcelable) {
-    activity.intent.putExtra(HAS_RESULT, true)
-    activity.sendBroadcast(Intent(activity.intent.getStringExtra(ACTION_KEY))
-        .putExtra(RESULT, result))
-    activity.finish()
-}
-
-fun endWithResult(fragment: Fragment,
-                  result: Parcelable) {
-    fragment.activity?.let { activity ->
-        fragment.arguments
-            ?.putBoolean(HAS_RESULT, true)
-        fragment.arguments
-            ?.putParcelable(RESULT, result)
-//        activity.sendBroadcast(Intent(fragment.arguments?.getString(ACTION_KEY))
-//            .putExtra(RESULT, result))
-        fragment.fragmentManager?.popBackStackImmediate()
-    }
-}
-
-
-private open class BroadcastReceiverActivityLifecycleCallbacks(internal val broadcastReceiver: BroadcastReceiver?,
-                                                               internal val activityIntentKey: String,
-                                                               internal val activityIntentValue: String,
-                                                               internal val action: String,
-                                                               internal val callerId: String,
-                                                               internal val onDestroyedCallback: ((BroadcastReceiverActivityLifecycleCallbacks) -> Unit)? = null): Application.ActivityLifecycleCallbacks {
+private open class StandardActivityLifecycleCallbacks(internal val broadcastReceiver: BroadcastReceiver?,
+                                                      internal val activityIntentKey: String,
+                                                      internal val activityIntentValue: String,
+                                                      internal val action: String,
+                                                      internal val callerId: String,
+                                                      internal val onDestroyedCallback: ((StandardActivityLifecycleCallbacks) -> Unit)? = null): Application.ActivityLifecycleCallbacks {
     override fun onActivityPaused(activity: Activity?) {}
 
     override fun onActivityResumed(activity: Activity) {}
@@ -108,59 +78,51 @@ private open class BroadcastReceiverActivityLifecycleCallbacks(internal val broa
     }
 }
 
-class LaunchForResult {
-    private fun <T : Parcelable> broadcastReceiverFactory(
-        onResultRetrieved: (T) -> Unit
-    ): BroadcastReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                context.unregisterReceiver(this)
+private var uniqueValue1: Long = 0
+private fun generateCallerKey(): String {
+    val key = CALLER_KEY + uniqueValue1
 
-                val result = intent.getParcelableExtra<T>(RESULT)
-                onResultRetrieved(result)
-            }
-        }
+    uniqueValue1++
 
-    private lateinit var broadcastReceiver: BroadcastReceiver
+    return key
+}
 
-    private fun generateCallerKey() = CALLER_KEY + uniqueValue
-
-    @Synchronized
-    fun <T: Parcelable> execute(
-        continuation: CancellableContinuation<ChoiceResult>,
-        callingActivity: FragmentActivity,
-        intent: Intent
-    ) {
+class ActivityLauncher<T: Parcelable>: Launcher<ActivityParams, T>(
+    { params, continuation ->
         val action = PREFIX + uniqueValue
         val callerId = generateCallerKey()
 
-        var result: T? = null
+        var result: Parcelable? = null
 
-        broadcastReceiver = broadcastReceiverFactory { it: T->
-            result = it
+        val broadcastReceiver =  object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                context.unregisterReceiver(this)
+
+                result = intent.getParcelableExtra(RESULT)
+            }
         }
 
-        callingActivity.intent.putExtra(CALLER_KEY, callerId)
-        callingActivity.application.registerActivityLifecycleCallbacks(object :
-            BroadcastReceiverActivityLifecycleCallbacks(broadcastReceiver,
+        params.callingActivity.intent.putExtra(CALLER_KEY, callerId)
+        params.callingActivity.application.registerActivityLifecycleCallbacks(object :
+            StandardActivityLifecycleCallbacks(broadcastReceiver,
                 activityIntentKey = ACTION_KEY,
                 activityIntentValue = action,
                 action = action,
                 callerId = callerId) {
             private fun handleBundle(bundle: Bundle?, activity: Activity) {
-                val cancelUnregisterCallbacks = object: BroadcastReceiverActivityLifecycleCallbacks(this.broadcastReceiver,
+                val cancelUnregisterCallbacks = object: StandardActivityLifecycleCallbacks(this.broadcastReceiver,
                     activityIntentKey = this.activityIntentKey,
                     activityIntentValue = this.activityIntentValue,
                     action = this.action,
                     callerId = this.callerId,
                     onDestroyedCallback = {
                         activity.application.unregisterActivityLifecycleCallbacks(it)
-                        continuation.resume(ChoiceResult.Cancelled)
+                        continuation.cancel()
                     }){
                 }
                 if (bundle?.containsKey(CALLER_KEY) == true) {
                     result?.let {
-                        continuation.resume(ChoiceResult.OK(it))
+                        continuation.resume(it as T)
                     }?: kotlin.run {
                         activity.application.registerActivityLifecycleCallbacks(cancelUnregisterCallbacks)
                     }
@@ -178,37 +140,25 @@ class LaunchForResult {
             }
         })
 
-        intent.putExtra(ACTION_KEY, action)
+        params.intent.putExtra(ACTION_KEY, action)
 
-        callingActivity.startActivity(intent)
-
-        uniqueValue++
+        params.callingActivity.startActivity(params.intent)
     }
+)
 
-    @Synchronized
-    fun <T: Parcelable> execute(
-        continuation: CancellableContinuation<ChoiceResult>,
-        callingActivity: FragmentActivity,
-        resultFragment: Fragment,
-        fragmentManager: FragmentManager,
-        fragmentTransaction: FragmentTransaction,
-        _bundle: Bundle? = null
-    ) {
-        val bundle = _bundle ?: Bundle()
+class FragmentLauncher<T: Parcelable>: Launcher<FragmentParams, T>(
+    { params, continuation ->
+        if (params.fragment.arguments == null) {
+            params.fragment.arguments = Bundle()
+        }
 
-        val callerId = generateCallerKey()
         val action = PREFIX + uniqueValue
-        callingActivity.intent.putExtra(CALLER_KEY, callerId)
+        val callerId = generateCallerKey()
+        params.callingActivity.intent.putExtra(CALLER_KEY, callerId)
 
-        resultFragment.arguments = bundle
-
-        val application = callingActivity.application
+        val application = params.callingActivity.application
 
         var activityCallbacks: Application.ActivityLifecycleCallbacks? = null
-
-//        broadcastReceiver = broadcastReceiverFactory { it : T ->
-//            continuation.resume(it)
-//        }
 
         val fragmentCallbacks = object:
             FragmentManager.FragmentLifecycleCallbacks() {
@@ -233,15 +183,15 @@ class LaunchForResult {
                 if (!hasOnSaveInstanceStateBeenCalled) {
                     application.unregisterActivityLifecycleCallbacks(activityCallbacks)
                     if (f.arguments?.getBoolean(HAS_RESULT) == true) {
-                        continuation.resume(ChoiceResult.OK(f.arguments!!.getParcelable<T>(RESULT)))
+                        continuation.resume(f.arguments!!.getParcelable(RESULT))
                     } else {
-                        continuation.resume(ChoiceResult.Cancelled)
+                        continuation.cancel()
                     }
                 }
             }
         }
 
-        activityCallbacks = object : BroadcastReceiverActivityLifecycleCallbacks(null,
+        activityCallbacks = object : StandardActivityLifecycleCallbacks(null,
             activityIntentKey = CALLER_KEY,
             activityIntentValue = callerId,
             action = action,
@@ -256,13 +206,16 @@ class LaunchForResult {
             }
         }
 
-        fragmentManager.registerFragmentLifecycleCallbacks(fragmentCallbacks, false)
+        params.fragmentManager.registerFragmentLifecycleCallbacks(fragmentCallbacks, false)
 
-        callingActivity.application.registerActivityLifecycleCallbacks(activityCallbacks)
-        bundle.putString(ACTION_KEY, action)
+        params.callingActivity.application.registerActivityLifecycleCallbacks(activityCallbacks)
+        params.fragment.arguments!!.putString(ACTION_KEY, action)
 
-        fragmentTransaction.commitAllowingStateLoss()
+        params.fragmentTransaction.commitAllowingStateLoss()
 
         uniqueValue++
     }
-}
+)
+
+fun <T: Parcelable> createActivityLauncher(): ActivityLauncher<T> = ActivityLauncher()
+fun <T: Parcelable> createFragmentLauncher(): FragmentLauncher<T> = FragmentLauncher()

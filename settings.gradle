@@ -1,1 +1,1 @@
-include ':app', ':common', ':library'
+include ':app', ':common', ':android'

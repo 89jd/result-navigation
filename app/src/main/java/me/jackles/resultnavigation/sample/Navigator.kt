@@ -1,15 +1,15 @@
 package me.jackles.resultnavigation.sample
 
-import android.R
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
 import android.support.v4.app.FragmentActivity
-import kotlinx.coroutines.suspendCancellableCoroutine
-import me.jackles.resultnavigation.common.ChoiceResult
-import me.jackles.resultnavigation.launchForResult
+import me.jackles.resultnavigation.ActivityParams
+import me.jackles.resultnavigation.FragmentParams
+import me.jackles.resultnavigation.createActivityLauncher
+import me.jackles.resultnavigation.createFragmentLauncher
 
 class Navigator(val application: Application) {
     private var activity: FragmentActivity? = null
@@ -33,36 +33,31 @@ class Navigator(val application: Application) {
             override fun onActivityStopped(activity: Activity) {}
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-
+                this@Navigator.activity = activity as FragmentActivity
             }
         })
     }
 
-    suspend fun launchGetStringViaActivity() = suspendCancellableCoroutine<ChoiceResult> {
-        activity?.let { activity ->
-            launchForResult<ResultActivity.Test>(it,
-                activity,
-                Intent(this.activity, ResultActivity::class.java)
-            )
-        }
-    }
+    suspend fun launchGetStringViaActivity(): ResultActivity.Test =
+        createActivityLauncher<ResultActivity.Test>()
+            .launchForResult(ActivityParams(activity!!, Intent(this.activity, ResultActivity::class.java))) {
+                println("Cancelled")
+            }
 
     @SuppressLint("CommitTransaction")
-    suspend fun launchGetStringViaFragment() = suspendCancellableCoroutine<ChoiceResult> {
-        val frag = ResultFragment()
-        activity?.let { activity ->
-            launchForResult<ResultActivity.Test>(it,
-                activity,
-                frag,
-                activity.supportFragmentManager,
-                activity.supportFragmentManager.beginTransaction()
+    suspend fun launchGetStringViaFragment() =
+        ResultFragment().let {
+            createFragmentLauncher<ResultActivity.Test>().launchForResult(FragmentParams(activity!!,
+                it,
+                activity!!.supportFragmentManager,
+                activity!!.supportFragmentManager.beginTransaction()
                     .replace(
-                        R.id.content,
-                        frag, "")
-                    .addToBackStack("")
-            )
+                        android.R.id.content,
+                        it, "")
+                    .addToBackStack(""))) {
+                println("Cancelled")
+            }
         }
-    }
 
     companion object {
         fun init(application: Application) {
