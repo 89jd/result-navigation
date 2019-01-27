@@ -1,5 +1,5 @@
 apply plugin: "kotlin-platform-native"
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
 
 group='com.github.JackED42'
 
