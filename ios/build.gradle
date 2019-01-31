@@ -44,12 +44,8 @@ def isPublishing() {
 }
 
 components.main {
-    if (isPublishing()) {
-        outputKinds = [KLIBRARY]
-    } else {
-        outputKinds = [FRAMEWORK]
-    }
-
+    outputKinds = [KLIBRARY]
+    
     targets = ['ios_x64', 'ios_arm64']
     extraOpts '-Xdisable=devirtualization', '-linker-options', '-iphoneos_version_min 9.0.0'
 }
