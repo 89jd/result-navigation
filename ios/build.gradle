@@ -45,7 +45,7 @@ def isPublishing() {
 
 components.main {
     outputKinds = [KLIBRARY]
-    
+
     targets = ['ios_x64', 'ios_arm64']
     extraOpts '-Xdisable=devirtualization', '-linker-options', '-iphoneos_version_min 9.0.0'
 }

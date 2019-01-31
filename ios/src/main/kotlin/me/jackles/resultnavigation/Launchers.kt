@@ -14,10 +14,8 @@ interface ResultHandler<T> {
 
 data class ViewControllerParams(
     internal val uiViewController: UIViewController,
-    internal val nextUIViewController: String,
-    internal val pushToNavigationViewController: Boolean,
-    internal val storyboardName: String = "main",
-    internal val bundle: NSBundle? = NSBundle.mainBundle
+    internal val nextUIViewController: UIViewController,
+    internal val pushToNavigationViewController: Boolean
 )
 
 private const val ON_COMPLETE_NOTIFICATION = "ON_COMPLETE_NOTIFICATION"
@@ -50,10 +48,10 @@ class ViewControllerLauncher<T>: Launcher<ViewControllerParams, T> (
                                     })
             
             if (pushToNavigationViewController && uiViewController is UINavigationController) {
-                uiViewController.pushViewController(uiViewController, 
+                uiViewController.pushViewController(nextUIViewController,
                                                     animated = true)
             } else {
-                uiViewController.presentViewController(uiViewController, 
+                uiViewController.presentViewController(nextUIViewController,
                                                         animated = true,
                                                         completion = null)
             }
