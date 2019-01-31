@@ -8,9 +8,26 @@ dependencies {
     expectedBy project(':common')
 }
 
+def isPublishing() {
+    def isPublishing = false
+    tasks.forEach {
+        print(it.name)
+        if (it.name.startsWith("publish")) {
+            print("publishing")
+            isPublishing = true
+        }
+    }
+    return isPublishing
+}
+
 components.main {
-    outputKinds = [FRAMEWORK]
+    if (isPublishing()) {
+        outputKinds = [KLIBRARY]
+    } else {
+        outputKinds = [FRAMEWORK]
+    }
+
     targets = ['ios_x64', 'ios_arm64']
     extraOpts '-Xdisable=devirtualization', '-linker-options', '-iphoneos_version_min 9.0.0'
-
 }
+
