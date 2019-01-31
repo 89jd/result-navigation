@@ -1,7 +1,30 @@
+buildscript {
+    ext.kotlin_version = '1.3.11'
+    repositories {
+        google()
+        jcenter()
+        maven {
+            url "https://dl.bintray.com/jetbrains/kotlin-native-dependencies"
+        }
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-native-gradle-plugin:1.3.0-rc-146"
+    }
+}
+
 apply plugin: "kotlin-platform-native"
 apply plugin: 'maven-publish'
 
 group='com.github.JackED42'
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
 
 dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-native:1.0.1"
