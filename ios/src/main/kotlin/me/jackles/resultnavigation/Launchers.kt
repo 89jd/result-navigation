@@ -8,10 +8,6 @@ import platform.darwin.*
 import platform.Foundation.*
 import platform.UIKit.*
 
-interface ResultHandler<T> {
-    var result: T?
-}
-
 data class ViewControllerParams(
     internal val uiViewController: UIViewController,
     internal val nextUIViewController: UIViewController,
@@ -20,26 +16,42 @@ data class ViewControllerParams(
 
 private const val ON_COMPLETE_NOTIFICATION = "ON_COMPLETE_NOTIFICATION"
 private const val RESULT_KEY = "result"
-private var uniqueId: Long = 0
 
-fun <T> endFlow(resultHandler: ResultHandler<T>) {
-    NSNotificationCenter
-                .defaultCenter
-                .postNotificationName(
-                    aName = ON_COMPLETE_NOTIFICATION,
-                    `object` = null,
-                    userInfo = mapOf(RESULT_KEY to resultHandler.result)
-                )
+private val isNavigationController = mutableMapOf<String, Boolean>()
+
+fun <T> endFlow(uiViewController: UIViewController,
+                result: T?) {
+    val sendNotification = {
+        NSNotificationCenter
+            .defaultCenter
+            .postNotificationName(
+                aName = ON_COMPLETE_NOTIFICATION + uiViewController.hash,
+                `object` = null,
+                userInfo = mapOf(RESULT_KEY to result)
+            )
+    }
+    if (isNavigationController[uiViewController.hash.toString()] == true) {
+        uiViewController.navigationController?.popViewControllerAnimated(true)
+        sendNotification()
+    } else {
+        uiViewController.dismissViewControllerAnimated(true,
+            completion = sendNotification)
+    }
 }
 class ViewControllerLauncher<T>: Launcher<ViewControllerParams, T> (
     { params, continuation ->
         params.apply {
+            val uniqueId = params.nextUIViewController.hash
+            isNavigationController[uniqueId.toString()] = uiViewController is UINavigationController
             NSNotificationCenter
                 .defaultCenter
                 .addObserverForName(name = ON_COMPLETE_NOTIFICATION + uniqueId,
                                     queue = null,
                                     `object` = null,
                                     usingBlock = {
+                                        NSNotificationCenter
+                                            .defaultCenter
+                                            .removeObserver(this)
                                         it?.userInfo?.get(RESULT_KEY)?.let {
                                             continuation.resume(it as T)
                                         }?: run {
